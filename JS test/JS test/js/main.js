@@ -4,15 +4,15 @@ var vertexShaderText =
         'precision mediump float;',
         '',
         'attribute vec3 vertPosition;',
-        'attribute vec3 vertColor;',
-        'varying vec3 fragColor;',
+        'attribute vec2 vertTexCoord;',
+        'varying vec2 fragTexCoord;',
         'uniform mat4 mWorld;',
         'uniform mat4 mView;',
         'uniform mat4 mProj;',
         '',
         'void main()',
         '{',
-        '  fragColor = vertColor;',
+        '  fragTexCoord = vertTexCoord;',
         ' /* Rotation matrix are multiplied from right to left */',
         ' /* the order of rotating matrices is important */',
         '  gl_Position = mProj * mView * mWorld * vec4(vertPosition, 1.0);',
@@ -20,14 +20,17 @@ var vertexShaderText =
     ].join('\n');
 
 // Shader with input from vertexShader (fragColor = vertColor)
+// Now implementation with texture. We added the sampler
 var fragmentShaderText =
     [
         'precision mediump float;',
         '',
-        'varying vec3 fragColor;',
+        'varying vec2 fragTexCoord;',
+        'uniform sampler2D sampler;',
+        '',
         'void main()',
         '{',
-        '  gl_FragColor = vec4(fragColor, 1.0);',
+        '  gl_FragColor = texture2D(sampler, fragTexCoord);',
         '}'
     ].join('\n');
 
@@ -96,37 +99,37 @@ var InitDemo = function () {
     // First create some Vertices
     // This is a box instead
     var boxVertices =
-        [ // x,y,z            R,G,B
+        [ // x,y,z            U, V
             // Top
-            -1.0, 1.0, -1.0, 0.5, 0.5, 0.5,
-            -1.0, 1.0, 1.0, 0.5, 0.5, 0.5,
-            1.0, 1.0, 1.0, 0.5, 0.5, 0.5,
-            1.0, 1.0, -1.0, 0.5, 0.5, 0.5,
+            -1.0, 1.0, -1.0, 0, 0, 
+            -1.0, 1.0, 1.0, 0, 1,
+            1.0, 1.0, 1.0, 1, 1,
+            1.0, 1.0, -1.0, 1, 0,
             // Left
-            -1.0, 1.0, 1.0, 0.75, 0.25, 0.5,
-            -1.0, -1.0, 1.0, 0.75, 0.25, 0.5,
-            -1.0, -1.0, -1.0, 0.75, 0.25, 0.5,
-            -1.0, 1.0, -1.0, 0.75, 0.25, 0.5,
+            -1.0, 1.0, 1.0, 0, 0,
+            -1.0, -1.0, 1.0, 1, 0,
+            -1.0, -1.0, -1.0, 1, 1,
+            -1.0, 1.0, -1.0, 0, 1,
             // Right
-            1.0, 1.0, 1.0, 0.25, 0.25, 0.75,
-            1.0, -1.0, 1.0, 0.25, 0.25, 0.75,
-            1.0, -1.0, -1.0, 0.25, 0.25, 0.75,
-            1.0, 1.0, -1.0, 0.25, 0.25, 0.75,
+            1.0, 1.0, 1.0, 1, 1,
+            1.0, -1.0, 1.0, 0, 1,
+            1.0, -1.0, -1.0, 0, 0,
+            1.0, 1.0, -1.0, 1, 0,
             // Front
-            1.0, 1.0, 1.0, 1.0, 0.0, 0.15,
-            1.0, -1.0, 1.0, 1.0, 0.0, 0.15,
-            -1.0, -1.0, 1.0, 1.0, 0.0, 0.15,
-            -1.0, 1.0, 1.0, 1.0, 0.0, 0.15,
+            1.0, 1.0, 1.0, 1, 1,
+            1.0, -1.0, 1.0, 1, 0,
+            -1.0, -1.0, 1.0, 0, 0,
+            -1.0, 1.0, 1.0, 0, 1,
             // Back
-            1.0, 1.0, -1.0, 0.0, 1.0, 0.15,
-            1.0, -1.0, -1.0, 0.0, 1.0, 0.15,
-            -1.0, -1.0, -1.0, 0.0, 1.0, 0.15,
-            -1.0, 1.0, -1.0, 0.0, 1.0, 0.15,
+            1.0, 1.0, -1.0, 0, 0,
+            1.0, -1.0, -1.0, 0, 1,
+            -1.0, -1.0, -1.0, 1, 1,
+            -1.0, 1.0, -1.0, 1, 0,
             // Bottom
-            -1.0, -1.0, -1.0, 0.5, 0.5, 1.0,
-            -1.0, -1.0, 1.0, 0.5, 0.5, 1.0,
-            1.0, -1.0, 1.0, 0.5, 0.5, 1.0,
-            1.0, -1.0, -1.0, 0.5, 0.5, 1.0
+            -1.0, -1.0, -1.0, 1, 1,
+            -1.0, -1.0, 1.0, 1, 0,
+            1.0, -1.0, 1.0, 0, 0,
+            1.0, -1.0, -1.0, 0, 1
         ];
     //  identifies which indexes form a triangle
     // first one 0,1,2 identifies that 
@@ -170,31 +173,42 @@ var InitDemo = function () {
 
     // See the vertPosition variable in the vertShader. Thios fetches its position in the shader text.
     var positionAttribLocation = gl.getAttribLocation(program, 'vertPosition');
-    var colorAttribLocation = gl.getAttribLocation(program, 'vertColor');
-
-    gl.vertexAttribPointer(
-        colorAttribLocation, //Attribute location
-        3, // Number of elements in each attribute (vec3)
-        gl.FLOAT, // Type of elements
-        gl.FALSE, // Is it normalised ?? Don't know what this means
-        6 * Float32Array.BYTES_PER_ELEMENT,// Size of an individual vertex
-        3 * Float32Array.BYTES_PER_ELEMENT // Offset from the beginning of a single vertex to this attribute
-    );
+    //var colorAttribLocation = gl.getAttribLocation(program, 'vertColor');
+    var texCoordAttribLocation = gl.getAttribLocation(program, 'vertTexCoord');
 
     gl.vertexAttribPointer(
         positionAttribLocation, //Attribute location
         3, // Number of elements in each attribute (vec3)
         gl.FLOAT, // Type of elements
         gl.FALSE, // Is it normalised ?? Don't know what this means
-        6 * Float32Array.BYTES_PER_ELEMENT,// Size of an individual vertex
+        5 * Float32Array.BYTES_PER_ELEMENT,// Size of an individual vertex
         0 // Offset from the beginning of a single vertex to this attribute
     );
 
+    gl.vertexAttribPointer(
+        texCoordAttribLocation, //Attribute location
+        2, // Number of elements in each attribute (vec2)
+        gl.FLOAT, // Type of elements
+        gl.FALSE, // Is it normalised ?? Don't know what this means
+        5 * Float32Array.BYTES_PER_ELEMENT,// Size of an individual vertex
+        3 * Float32Array.BYTES_PER_ELEMENT // Offset from the beginning of a single vertex to this attribute
+    );
 
     // Enable the vertice array
     gl.enableVertexAttribArray(positionAttribLocation);
-    gl.enableVertexAttribArray(colorAttribLocation);
+    gl.enableVertexAttribArray(texCoordAttribLocation);
 
+    // Create texture
+    var boxTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, boxTexture);
+    // Texture_wrap_s & t is openGL syno's for UVs
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, document.getElementById('crate-image'));
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
 
     // Tell gl we use this program before uniformMatrix4fv call.
     // if this call comes after uniformMatrix4fv it will not know they are linked
@@ -239,6 +253,8 @@ var InitDemo = function () {
         // Clear the screen
         gl.clearColor(0.75, 0.85, 0.8, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.bindTexture(gl.TEXTURE_2D, boxTexture);
+        gl.activeTexture(gl.TEXTURE0); //first sampler is at 0 next sampler would be TEXTURE1
 
         // How do we draw (TRIANGLES), what do we skip (0), How many do we draw (3)
         // gl.drawArrays(gl.TRIANGLES, 0, 3); This function was for the triangles

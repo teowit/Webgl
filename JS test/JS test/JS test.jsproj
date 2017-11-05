@@ -66,6 +66,7 @@
     <Content Include="images\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="images\StoreLogo.png" />
     <Content Include="images\Wide310x150Logo.scale-200.png" />
+    <Content Include="js\crate2_diffuse.png" />
     <Content Include="js\gl-matrix.js" />
     <Content Include="js\main.js" />
     <Content Include="css\default.css" />
